@@ -1,4 +1,4 @@
-"""Surveille les dossards du 10 KM DE BLAGNAC (07/03/2027) sur Chrono-Start et alerte sur WhatsApp."""
+"""Surveille les dossards du 10 KM DE BLAGNAC (07/03/2027) sur Chrono-Start et alerte sur WhatsApp / Telegram."""
 import json
 import os
 import re
@@ -41,13 +41,33 @@ def send_whatsapp(message: str) -> bool:
             return False
         query = urllib.parse.urlencode({"phone": phone, "text": message, "apikey": apikey})
         req = urllib.request.Request(f"https://api.callmebot.com/whatsapp.php?{query}")
+    return _send(req, "WhatsApp")
+
+
+def send_telegram(message: str) -> bool:
+    """Envoie `message` sur Telegram via CallMeBot (TELEGRAM_USER = @pseudo, après /start à @CallMeBot_txtbot)."""
+    user = os.environ.get("TELEGRAM_USER")
+    if not user:
+        print("Telegram non configuré (TELEGRAM_USER absent).")
+        return False
+    query = urllib.parse.urlencode({"user": user, "text": message})
+    return _send(urllib.request.Request(f"https://api.callmebot.com/text.php?{query}"), "Telegram")
+
+
+def _send(req: urllib.request.Request, channel: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            print(f"WhatsApp envoyé (HTTP {resp.status})")
+            print(f"{channel} envoyé (HTTP {resp.status})")
             return True
     except Exception as exc:  # une alerte ratée ne doit pas faire planter la surveillance
-        print(f"::warning::Échec d'envoi WhatsApp : {exc}")
+        print(f"::warning::Échec d'envoi {channel} : {exc}")
         return False
+
+
+def notify(message: str) -> bool:
+    """Envoie sur tous les canaux configurés ; True si au moins un a réussi."""
+    results = [send_whatsapp(message), send_telegram(message)]
+    return any(results)
 
 
 def race_block(text: str) -> list[str] | None:
@@ -127,15 +147,15 @@ def main() -> int:
         new["failures"] = state.get("failures", 0) + 1
         print(f"::warning::Vérification impossible ({new['failures']} échec(s) d'affilée) : {exc}")
         if new["failures"] == FAILURE_ALERT_AT:
-            send_whatsapp(f"⚠️ Bot 10 km Blagnac : {FAILURE_ALERT_AT} vérifications échouées d'affilée. Dernière erreur : {exc}")
+            notify(f"⚠️ Bot 10 km Blagnac : {FAILURE_ALERT_AT} vérifications échouées d'affilée. Dernière erreur : {exc}")
         STATE_FILE.write_text(json.dumps(new, indent=2) + "\n", encoding="utf-8")
         return 0
 
     print(f"10 km ouvert : {detail_open} | dossards 10 km sur la bourse : {bourse_10k}")
     if detail_open and not state.get("detail_open"):
-        send_whatsapp(f"🏃 10 KM DE BLAGNAC : les inscriptions semblent RÉOUVERTES !\n{DETAIL_URL}")
+        notify(f"🏃 10 KM DE BLAGNAC : les inscriptions semblent RÉOUVERTES !\n{DETAIL_URL}")
     if bourse_10k > state.get("bourse_10k", 0):
-        send_whatsapp(f"🎽 10 KM DE BLAGNAC : {bourse_10k} dossard(s) sur la bourse aux échanges !\n{BOURSE_URL}")
+        notify(f"🎽 10 KM DE BLAGNAC : {bourse_10k} dossard(s) sur la bourse aux échanges !\n{BOURSE_URL}")
 
     new.update(detail_open=detail_open, bourse_10k=bourse_10k, failures=0)
     STATE_FILE.write_text(json.dumps(new, indent=2) + "\n", encoding="utf-8")
@@ -144,5 +164,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test-whatsapp"]:
-        sys.exit(0 if send_whatsapp("✅ Test du bot 10 km Blagnac : les alertes WhatsApp fonctionnent.") else 1)
+        sys.exit(0 if notify("✅ Test du bot 10 km Blagnac : les alertes fonctionnent.") else 1)
     sys.exit(main())

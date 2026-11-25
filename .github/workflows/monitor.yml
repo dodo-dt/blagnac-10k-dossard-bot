@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       test_whatsapp:
-        description: "Envoyer un message WhatsApp de test"
+        description: "Envoyer un message de test (WhatsApp / Telegram)"
         type: boolean
         default: false
 
@@ -25,6 +25,7 @@ jobs:
       WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
       WHATSAPP_WEBHOOK_URL: ${{ secrets.WHATSAPP_WEBHOOK_URL }}
+      TELEGRAM_USER: ${{ secrets.TELEGRAM_USER }}
       BROWSER_CHANNEL: chrome # Chrome préinstallé sur ubuntu-latest
       PYTHONUNBUFFERED: "1"
     steps:
