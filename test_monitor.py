@@ -37,6 +37,8 @@ assert parse_detail(DETAIL.replace("Fermées  (COMPLET)\n21", "XX\n21", 0).repla
 assert parse_detail(DETAIL.replace(
     "10 KM DE BLAGNAC  19€ *\nCourse Individuelle\nInscriptions Internet Fermées  (COMPLET)",
     "10 KM DE BLAGNAC  19€ *\nCourse Individuelle\nClôture des inscriptions le 04/03/2027")) is True
+# Libellé depuis le 25/11/2026 (bouton "Accès VIP" réservé aux partenaires) : toujours fermé au public.
+assert parse_detail(DETAIL.replace("(COMPLET)", "(COMPLET, ACCÈS PARTENAIRE)")) is False
 assert parse_bourse(BOURSE) == 0  # l'offre 21 km ne compte pas
 assert parse_bourse(BOURSE_10K) == 2
 for bad in ("", "Chargement..."):
